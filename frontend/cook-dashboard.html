@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniBite – Dashboard Μάγειρα</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    .allergen-checkboxes { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .allergen-checkboxes label { display: flex; align-items: center; gap: .3rem; cursor: pointer; background: var(--gray-100); padding: .3rem .7rem; border-radius: 20px; font-size: .85rem; transition: background var(--transition); }
+    .allergen-checkboxes input[type=checkbox]:checked + span { font-weight: 600; }
+    .allergen-checkboxes label:has(input:checked) { background: var(--orange-light); }
+    .request-row td { vertical-align: middle; }
+    .actions-cell { display: flex; gap: .4rem; flex-wrap: wrap; }
+    #pickup-map { height: 220px; border-radius: var(--radius-sm); margin-top: .5rem; border: 1.5px solid var(--gray-200); cursor: crosshair; }
+    .map-hint { font-size: .78rem; color: var(--gray-600); margin-top: .3rem; }
+    .coords-display { background: var(--green-pale); color: var(--green); border-radius: var(--radius-sm); padding: .35rem .7rem; font-size: .82rem; font-weight: 600; margin-top: .4rem; display: none; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand"><span>🍽️</span> UniBite</div>
+    <ul class="navbar-nav">
+      <li><span class="navbar-credits" id="nav-credits">⭐ —</span></li>
+      <li><a href="#" id="logout-btn">Έξοδος</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>Dashboard Μάγειρα</h1>
+      <p id="welcome-msg">Καλώς ήρθες!</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:1rem;padding-bottom:3rem;">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="listings">Οι Αγγελίες Μου</button>
+      <button class="tab-btn" data-tab="requests">Αιτήματα <span id="pending-count" class="badge badge-pending hidden">0</span></button>
+    </div>
+
+    <!-- Listings Tab -->
+    <div class="tab-panel active" id="tab-listings">
+      <div class="flex-between mb-2">
+        <h2 style="font-size:1.1rem;font-weight:700;">Οι αγγελίες μου</h2>
+        <button class="btn btn-primary" id="new-listing-btn">+ Νέα Αγγελία</button>
+      </div>
+      <div id="listings-alert"></div>
+      <div id="my-listings"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Requests Tab -->
+    <div class="tab-panel" id="tab-requests">
+      <h2 class="mb-2" style="font-size:1.1rem;font-weight:700;">Εισερχόμενα Αιτήματα</h2>
+      <div id="requests-alert"></div>
+      <div id="requests-table"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Listing Modal -->
+  <div class="modal-overlay" id="listing-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Νέα Αγγελία</h2>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="modal-alert"></div>
+        <form id="listing-form" enctype="multipart/form-data">
+          <input type="hidden" id="listing-id">
+          <div class="form-group">
+            <label class="form-label">Τίτλος *</label>
+            <input type="text" class="form-control" id="f-title" placeholder="π.χ. Μακαρονάδα με σάλτσα" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Σημειώσεις</label>
+            <textarea class="form-control" id="f-desc" placeholder="Περιγραφή, υλικά..."></textarea>
+          </div>
+          <div class="grid-2 grid" style="gap:.8rem">
+            <div class="form-group">
+              <label class="form-label">Αριθμός Μερίδων *</label>
+              <input type="number" class="form-control" id="f-portions" min="1" max="20" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Φωτογραφία</label>
+              <input type="file" class="form-control" id="f-photo" accept="image/*">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Σημείο Παράδοσης *</label>
+            <input type="text" class="form-control" id="f-location" placeholder="π.χ. Εστία Α, Δωμάτιο 214" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Σημείο στον χάρτη <span style="font-weight:400;color:var(--gray-600)">(κάνε κλικ για να ορίσεις)</span></label>
+            <div id="pickup-map"></div>
+            <div class="map-hint">🖱️ Κάνε κλικ οπουδήποτε στον χάρτη για να βάλεις το σημείο παραλαβής</div>
+            <div class="coords-display" id="coords-display"></div>
+            <input type="hidden" id="f-lat">
+            <input type="hidden" id="f-lng">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ώρες Παραλαβής *</label>
+            <input type="text" class="form-control" id="f-time" placeholder="π.χ. 13:00 – 15:00" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Αλλεργιογόνα (επέλεξε αυτά που υπάρχουν)</label>
+            <div class="allergen-checkboxes">
+              ${['gluten','crustaceans','eggs','fish','peanuts','soybeans','milk','nuts','celery','mustard','sesame','sulphites','lupin','molluscs'].map(a =>
+                `<label><input type="checkbox" name="allergen" value="${a}"><span>${allergenName(a)}</span></label>`
+              ).join('')}
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel">Ακύρωση</button>
+        <button class="btn btn-primary" id="modal-submit">Αποθήκευση</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    const ALLERGENS = ['gluten','crustaceans','eggs','fish','peanuts','soybeans','milk','nuts','celery','mustard','sesame','sulphites','lupin','molluscs'];
+    let currentUser = null;
+    let pickupMap = null;
+    let pickupMarker = null;
+
+    (async () => {
+      currentUser = await getUser();
+      if (!currentUser) { location.href = '/'; return; }
+      if (currentUser.role !== 'cook') { redirectByRole(currentUser.role); return; }
+      document.getElementById('nav-credits').textContent = '⭐ ' + currentUser.credits + ' πόντοι';
+      document.getElementById('welcome-msg').textContent = 'Γεια σου, ' + currentUser.username + '!';
+      loadNotifications();
+      await Promise.all([loadMyListings(), loadRequests()]);
+    })();
+
+    document.getElementById('logout-btn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await API.post('/api/auth/logout');
+      location.href = '/';
+    });
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Modal
+    const modal = document.getElementById('listing-modal');
+    document.getElementById('new-listing-btn').addEventListener('click', () => openModal());
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('modal-cancel').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    function openModal(listing = null) {
+      document.getElementById('modal-alert').innerHTML = '';
+      document.getElementById('modal-title').textContent = listing ? 'Επεξεργασία Αγγελίας' : 'Νέα Αγγελία';
+      document.getElementById('listing-id').value = listing ? listing.id : '';
+      document.getElementById('f-title').value = listing ? listing.title : '';
+      document.getElementById('f-desc').value = listing ? (listing.description || '') : '';
+      document.getElementById('f-portions').value = listing ? listing.total_portions : '';
+      document.getElementById('f-location').value = listing ? listing.pickup_location : '';
+      document.getElementById('f-lat').value = listing ? (listing.pickup_lat || '') : '';
+      document.getElementById('f-lng').value = listing ? (listing.pickup_lng || '') : '';
+      document.getElementById('f-time').value = listing ? listing.pickup_time : '';
+      const existingAllergens = listing ? (typeof listing.allergens === 'string' ? JSON.parse(listing.allergens || '[]') : (listing.allergens || [])) : [];
+      document.querySelectorAll('input[name=allergen]').forEach(cb => {
+        cb.checked = existingAllergens.includes(cb.value);
+      });
+      modal.classList.add('open');
+
+      // Init pickup map after modal is visible
+      setTimeout(() => initPickupMap(
+        listing && listing.pickup_lat ? parseFloat(listing.pickup_lat) : null,
+        listing && listing.pickup_lng ? parseFloat(listing.pickup_lng) : null
+      ), 100);
+    }
+
+    function initPickupMap(lat, lng) {
+      const defaultCenter = [38.2466, 21.7346]; // Πανεπιστήμιο Πατρών
+      const center = (lat && lng) ? [lat, lng] : defaultCenter;
+
+      if (!pickupMap) {
+        pickupMap = L.map('pickup-map').setView(center, 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(pickupMap);
+        pickupMap.on('click', (e) => setPickupMarker(e.latlng.lat, e.latlng.lng));
+      } else {
+        pickupMap.setView(center, 16);
+        pickupMap.invalidateSize();
+      }
+
+      // If editing and has coords, place marker
+      if (lat && lng) setPickupMarker(lat, lng, false);
+    }
+
+    function setPickupMarker(lat, lng, panTo = true) {
+      if (pickupMarker) pickupMarker.remove();
+      pickupMarker = L.marker([lat, lng], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div style="background:#2d7a4f;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3);">📍</div>',
+          iconSize: [32, 32], iconAnchor: [16, 16]
+        })
+      }).addTo(pickupMap).bindPopup('Σημείο παραλαβής').openPopup();
+
+      document.getElementById('f-lat').value = lat.toFixed(6);
+      document.getElementById('f-lng').value = lng.toFixed(6);
+
+      const display = document.getElementById('coords-display');
+      display.style.display = 'block';
+      display.textContent = `✅ Επιλεγμένο σημείο: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+      if (panTo) pickupMap.setView([lat, lng], 17);
+    }
+
+    function closeModal() {
+      modal.classList.remove('open');
+      // Reset marker state for next open
+      if (pickupMarker) { pickupMarker.remove(); pickupMarker = null; }
+      document.getElementById('coords-display').style.display = 'none';
+    }
+
+    document.getElementById('modal-submit').addEventListener('click', async () => {
+      const id = document.getElementById('listing-id').value;
+      const form = document.getElementById('listing-form');
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+      const formData = new FormData();
+      formData.append('title', document.getElementById('f-title').value);
+      formData.append('description', document.getElementById('f-desc').value);
+      formData.append('total_portions', document.getElementById('f-portions').value);
+      formData.append('pickup_location', document.getElementById('f-location').value);
+      formData.append('pickup_lat', document.getElementById('f-lat').value);
+      formData.append('pickup_lng', document.getElementById('f-lng').value);
+      formData.append('pickup_time', document.getElementById('f-time').value);
+      const allergens = [...document.querySelectorAll('input[name=allergen]:checked')].map(c => c.value);
+      formData.append('allergens', JSON.stringify(allergens));
+      const photo = document.getElementById('f-photo').files[0];
+      if (photo) formData.append('photo', photo);
+      try {
+        if (id) {
+          await API.putForm('/api/listings/' + id, formData);
+        } else {
+          await API.postForm('/api/listings', formData);
+        }
+        closeModal();
+        await loadMyListings();
+      } catch (err) {
+        showAlert(document.getElementById('modal-alert'), err.message);
+      }
+    });
+
+    async function loadMyListings() {
+      const container = document.getElementById('my-listings');
+      try {
+        const listings = await API.get('/api/listings/my');
+        if (listings.length === 0) {
+          container.innerHTML = '<div class="empty-state"><div class="emoji">🍳</div><p>Δεν έχεις αγγελίες ακόμα</p></div>';
+          return;
+        }
+        container.innerHTML = `
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Τίτλος</th><th>Μερίδες</th><th>Παράδοση</th><th>Ώρες</th><th>Κατάσταση</th><th>Ενέργειες</th>
+              </tr></thead>
+              <tbody>
+                ${listings.map(l => `
+                  <tr>
+                    <td><strong>${l.title}</strong></td>
+                    <td>${l.available_portions}/${l.total_portions}</td>
+                    <td>${l.pickup_location}</td>
+                    <td>${l.pickup_time}</td>
+                    <td><span class="badge badge-${l.status}">${statusLabel(l.status)}</span></td>
+                    <td>
+                      <div class="actions-cell">
+                        <button class="btn btn-secondary btn-sm" onclick='editListing(${JSON.stringify(l)})'>✏️</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteListing(${l.id})">🗑️</button>
+                      </div>
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch (err) {
+        showAlert(document.getElementById('listings-alert'), err.message);
+      }
+    }
+
+    function editListing(listing) { openModal(listing); }
+
+    async function deleteListing(id) {
+      if (!confirm('Διαγραφή αυτής της αγγελίας;')) return;
+      try {
+        await API.delete('/api/listings/' + id);
+        await loadMyListings();
+      } catch (err) {
+        showAlert(document.getElementById('listings-alert'), err.message);
+      }
+    }
+
+    async function loadRequests() {
+      const container = document.getElementById('requests-table');
+      try {
+        const requests = await API.get('/api/requests/incoming');
+        const pending = requests.filter(r => r.status === 'pending').length;
+        const badge = document.getElementById('pending-count');
+        if (pending > 0) { badge.textContent = pending; badge.classList.remove('hidden'); }
+        if (requests.length === 0) {
+          container.innerHTML = '<div class="empty-state"><div class="emoji">📭</div><p>Δεν υπάρχουν αιτήματα ακόμα</p></div>';
+          return;
+        }
+        container.innerHTML = `
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Φοιτητής</th><th>Αγγελία</th><th>Κατάσταση</th><th>Ημ/νία</th><th>Ενέργειες</th>
+              </tr></thead>
+              <tbody id="req-tbody">
+                ${requests.map(r => requestRow(r)).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch (err) {
+        showAlert(document.getElementById('requests-alert'), err.message);
+      }
+    }
+
+    function requestRow(r) {
+      let actions = '';
+      if (r.status === 'pending') {
+        actions = `
+          <button class="btn btn-primary btn-sm" onclick="reqAction(${r.id},'approve')">✅ Αποδοχή</button>
+          <button class="btn btn-danger btn-sm" onclick="reqAction(${r.id},'reject')">❌ Απόρριψη</button>`;
+      } else if (r.status === 'approved') {
+        actions = `
+          <button class="btn btn-primary btn-sm" onclick="reqAction(${r.id},'picked-up')">📦 Παρελήφθη</button>
+          <button class="btn btn-secondary btn-sm" onclick="reqAction(${r.id},'no-show')">🚫 No-show</button>`;
+      }
+      return `
+        <tr id="req-row-${r.id}" class="request-row">
+          <td>${r.consumer_name}</td>
+          <td>${r.listing_title}</td>
+          <td><span class="badge badge-${r.status}">${statusLabel(r.status)}</span></td>
+          <td>${formatDate(r.created_at)}</td>
+          <td><div class="actions-cell">${actions}</div></td>
+        </tr>`;
+    }
+
+    async function reqAction(id, action) {
+      try {
+        await API.put(`/api/requests/${id}/${action}`);
+        await Promise.all([loadRequests(), refreshCredits()]);
+      } catch (err) {
+        showAlert(document.getElementById('requests-alert'), err.message);
+      }
+    }
+
+    async function refreshCredits() {
+      currentUser = await getUser();
+      document.getElementById('nav-credits').textContent = '⭐ ' + currentUser.credits + ' πόντοι';
+    }
+
+    function allergenName(key) {
+      const map = { gluten:'Γλουτένη',crustaceans:'Καρκινοειδή',eggs:'Αυγά',fish:'Ψάρι',peanuts:'Φιστίκια',soybeans:'Σόγια',milk:'Γάλα',nuts:'Ξηροί καρποί',celery:'Σέλινο',mustard:'Μουστάρδα',sesame:'Σουσάμι',sulphites:'Θειώδη',lupin:'Λούπινο',molluscs:'Μαλάκια' };
+      return map[key] || key;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniBite – Τα Αιτήματά μου</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <style>
+    .request-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 1.25rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: .75rem; }
+    .request-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .request-card-title { font-weight: 700; font-size: 1.05rem; }
+    .request-card-meta { font-size: .85rem; color: var(--gray-600); display: flex; flex-direction: column; gap: .2rem; }
+    .rating-inline { display: flex; gap: .3rem; align-items: center; }
+    .rating-inline .star { font-size: 1.6rem; cursor: pointer; color: var(--gray-200); transition: color var(--transition); }
+    .rating-inline .star.filled { color: #f9a825; }
+    .pending-rating-box { background: var(--orange-light); border: 1px solid #ffe0b2; border-radius: var(--radius-sm); padding: .9rem 1.1rem; }
+    .pending-rating-box p { font-size: .9rem; margin-bottom: .6rem; font-weight: 600; color: var(--orange); }
+    .tabs { margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand"><span>🍽️</span> UniBite</div>
+    <ul class="navbar-nav">
+      <li><a href="/feed.html">Αγγελίες</a></li>
+      <li><a href="/my-requests.html" class="active">Τα Αιτήματά μου</a></li>
+      <li><span class="navbar-credits" id="nav-credits">⭐ —</span></li>
+      <li><a href="#" id="logout-btn">Έξοδος</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>Τα Αιτήματά μου</h1>
+      <p>Παρακολούθηση αιτημάτων & αξιολόγηση γευμάτων</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:1rem;padding-bottom:3rem;max-width:800px;">
+    <div id="alert-box"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="all">Όλα</button>
+      <button class="tab-btn" data-tab="pending">Εκκρεμεί</button>
+      <button class="tab-btn" data-tab="picked_up">Παρελήφθησαν</button>
+      <button class="tab-btn" data-tab="to-rate">Προς Αξιολόγηση <span id="to-rate-count" class="badge badge-pending hidden">0</span></button>
+    </div>
+
+    <div id="requests-container"><div class="spinner"></div></div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    let allRequests = [];
+    let activeTab = 'all';
+
+    (async () => {
+      const user = await getUser();
+      if (!user) { location.href = '/'; return; }
+      if (user.role !== 'consumer') { redirectByRole(user.role); return; }
+      document.getElementById('nav-credits').textContent = '⭐ ' + user.credits + ' πόντοι';
+      loadNotifications();
+      await loadRequests();
+    })();
+
+    document.getElementById('logout-btn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await API.post('/api/auth/logout');
+      location.href = '/';
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTab = btn.dataset.tab;
+        renderRequests();
+      });
+    });
+
+    async function loadRequests() {
+      try {
+        allRequests = await API.get('/api/requests/mine');
+        const toRate = allRequests.filter(r => r.status === 'picked_up' && !r.rating_id);
+        const badge = document.getElementById('to-rate-count');
+        if (toRate.length > 0) { badge.textContent = toRate.length; badge.classList.remove('hidden'); }
+        renderRequests();
+      } catch (err) {
+        showAlert(document.getElementById('alert-box'), err.message);
+      }
+    }
+
+    function getVisible() {
+      if (activeTab === 'all') return allRequests;
+      if (activeTab === 'to-rate') return allRequests.filter(r => r.status === 'picked_up' && !r.rating_id);
+      return allRequests.filter(r => r.status === activeTab);
+    }
+
+    function renderRequests() {
+      const container = document.getElementById('requests-container');
+      const list = getVisible();
+      if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="emoji">📭</div><p>Δεν υπάρχουν αιτήματα εδώ</p></div>';
+        return;
+      }
+      container.innerHTML = list.map(r => requestCard(r)).join('');
+      container.querySelectorAll('.star').forEach(star => {
+        star.addEventListener('mouseenter', () => highlightStars(star.closest('.rating-inline'), star.dataset.score));
+        star.addEventListener('mouseleave', () => {
+          const selected = star.closest('.rating-inline').dataset.selected || 0;
+          highlightStars(star.closest('.rating-inline'), selected);
+        });
+        star.addEventListener('click', () => {
+          const row = star.closest('.rating-inline');
+          row.dataset.selected = star.dataset.score;
+          highlightStars(row, star.dataset.score);
+          row.closest('.pending-rating-box').querySelector('.submit-rating').disabled = false;
+        });
+      });
+      container.querySelectorAll('.submit-rating').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const box = btn.closest('.pending-rating-box');
+          const row = box.querySelector('.rating-inline');
+          const score = parseInt(row.dataset.selected);
+          const requestId = parseInt(btn.dataset.reqId);
+          btn.disabled = true;
+          try {
+            await API.post('/api/ratings', { request_id: requestId, score });
+            showAlert(document.getElementById('alert-box'), 'Η αξιολόγηση καταχωρήθηκε! +' + (score > 3 ? 2 : 1) + ' πόντοι για τον μάγειρα.', 'success');
+            await loadRequests();
+            const user = await getUser();
+            document.getElementById('nav-credits').textContent = '⭐ ' + user.credits + ' πόντοι';
+          } catch (err) {
+            showAlert(document.getElementById('alert-box'), err.message);
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    function requestCard(r) {
+      const needsRating = r.status === 'picked_up' && !r.rating_id;
+      const ratingSection = needsRating ? `
+        <div class="pending-rating-box">
+          <p>⭐ Αξιολόγησε το γεύμα — έχεις 48 ώρες!</p>
+          <div class="rating-inline" data-selected="0">
+            ${[1,2,3,4,5].map(i => `<span class="star" data-score="${i}">★</span>`).join('')}
+          </div>
+          <button class="btn btn-primary btn-sm mt-1 submit-rating" data-req-id="${r.id}" disabled>Υποβολή</button>
+        </div>` : '';
+
+      const ratedSection = r.rating_id ? `
+        <div class="alert alert-success" style="margin:0;padding:.6rem 1rem;">
+          ✅ Αξιολόγησες με ${'★'.repeat(r.rating_score)}${'☆'.repeat(5 - r.rating_score)} (${r.rating_score}/5)
+        </div>` : '';
+
+      return `
+        <div class="request-card">
+          <div class="request-card-header">
+            <div>
+              <div class="request-card-title">${r.listing_title}</div>
+              <div class="request-card-meta">
+                <span>👨‍🍳 ${r.cook_name}</span>
+                <span>📅 ${formatDate(r.created_at)}</span>
+              </div>
+            </div>
+            <span class="badge badge-${r.status}">${statusLabel(r.status)}</span>
+          </div>
+          ${ratingSection}
+          ${ratedSection}
+          ${r.status !== 'picked_up' && r.status !== 'rating_expired' ? '' : ''}
+          <div>
+            <a href="/listing.html?id=${r.listing_id}" class="btn btn-secondary btn-sm">Δες Αγγελία →</a>
+          </div>
+        </div>`;
+    }
+
+    function highlightStars(row, count) {
+      row.querySelectorAll('.star').forEach(s => s.classList.toggle('filled', s.dataset.score <= count));
+    }
+  </script>
+</body>
+</html>

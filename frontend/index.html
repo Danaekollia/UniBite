@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniBite – Φοιτητικό Food Sharing</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #2d7a4f 0%, #4caf78 100%); }
+    .auth-card { background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.18); width: 100%; max-width: 440px; padding: 2.5rem 2rem; margin: 1rem; }
+    .auth-logo { text-align: center; margin-bottom: 1.5rem; }
+    .auth-logo h1 { color: var(--green); font-size: 2rem; }
+    .auth-logo p { color: var(--gray-600); font-size: .95rem; margin-top: .3rem; }
+  </style>
+</head>
+<body>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>🍽️ UniBite</h1>
+      <p>Φοιτητικό Food Sharing</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="login">Σύνδεση</button>
+      <button class="tab-btn" data-tab="register">Εγγραφή</button>
+    </div>
+
+    <!-- Login -->
+    <div class="tab-panel active" id="tab-login">
+      <div id="login-alert"></div>
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="login-email" placeholder="email@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Κωδικός</label>
+          <input type="password" class="form-control" id="login-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Σύνδεση</button>
+      </form>
+    </div>
+
+    <!-- Register -->
+    <div class="tab-panel" id="tab-register">
+      <div id="register-alert"></div>
+      <form id="register-form">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-control" id="reg-username" placeholder="Το username σου" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="reg-email" placeholder="email@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Κωδικός</label>
+          <input type="password" class="form-control" id="reg-password" placeholder="Τουλάχιστον 6 χαρακτήρες" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ρόλος</label>
+          <select class="form-control" id="reg-role">
+            <option value="consumer">Καταναλωτής (αναζητώ φαγητό)</option>
+            <option value="cook">Μάγειρας (προσφέρω φαγητό)</option>
+          </select>
+        </div>
+        <div class="alert alert-info mt-1">
+          🎁 Ξεκινάς με <strong>5 πόντους</strong> για να κάνεις τις πρώτες σου κρατήσεις!
+        </div>
+        <button type="submit" class="btn btn-primary btn-block mt-2">Εγγραφή</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    (async () => {
+      const user = await getUser();
+      if (user) redirectByRole(user.role);
+    })();
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alertBox = document.getElementById('login-alert');
+      try {
+        const data = await API.post('/api/auth/login', {
+          email: document.getElementById('login-email').value,
+          password: document.getElementById('login-password').value
+        });
+        redirectByRole(data.user.role);
+      } catch (err) {
+        showAlert(alertBox, err.message);
+      }
+    });
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alertBox = document.getElementById('register-alert');
+      try {
+        const data = await API.post('/api/auth/register', {
+          username: document.getElementById('reg-username').value,
+          email: document.getElementById('reg-email').value,
+          password: document.getElementById('reg-password').value,
+          role: document.getElementById('reg-role').value
+        });
+        redirectByRole(data.user.role);
+      } catch (err) {
+        showAlert(alertBox, err.message);
+      }
+    });
+  </script>
+</body>
+</html>

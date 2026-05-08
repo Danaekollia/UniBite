@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniBite – Αγγελία</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    .listing-detail { max-width: 760px; margin: 2rem auto; padding: 0 1.5rem; }
+    .listing-hero { width: 100%; height: 300px; object-fit: cover; border-radius: var(--radius); margin-bottom: 1.5rem; }
+    .listing-hero-placeholder { width: 100%; height: 300px; background: var(--gray-100); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 5rem; margin-bottom: 1.5rem; }
+    .info-row { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .rating-stars .star { font-size: 2rem; cursor: pointer; }
+    #mini-map { height: 220px; border-radius: var(--radius); margin-top: .5rem; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand"><span>🍽️</span> UniBite</div>
+    <ul class="navbar-nav">
+      <li><a href="/feed.html">← Πίσω</a></li>
+      <li><span class="navbar-credits" id="nav-credits">⭐ —</span></li>
+      <li><a href="#" id="logout-btn">Έξοδος</a></li>
+    </ul>
+  </nav>
+
+  <div class="listing-detail">
+    <div id="alert-box"></div>
+    <div id="content"><div class="spinner"></div></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const listingId = params.get('id');
+    let currentUser = null;
+    let myRequests = [];
+
+    document.getElementById('logout-btn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await API.post('/api/auth/logout');
+      location.href = '/';
+    });
+
+    (async () => {
+      currentUser = await getUser();
+      if (!currentUser) { location.href = '/'; return; }
+      document.getElementById('nav-credits').textContent = '⭐ ' + currentUser.credits + ' πόντοι';
+      loadNotifications();
+
+      if (!listingId) { location.href = '/feed.html'; return; }
+
+      const [listing, ratingData] = await Promise.all([
+        API.get('/api/listings/' + listingId),
+        API.get('/api/ratings/listing/' + listingId).catch(() => null)
+      ]);
+
+      if (currentUser.role === 'consumer') {
+        myRequests = await API.get('/api/requests/mine').catch(() => []);
+      }
+
+      renderListing(listing, ratingData);
+    })();
+
+    function renderListing(l, ratingData) {
+      const allergens = typeof l.allergens === 'string' ? JSON.parse(l.allergens || '[]') : (l.allergens || []);
+      const myReq = myRequests.find(r => r.listing_id == l.id);
+      const avg = ratingData && ratingData.avg_score ? parseFloat(ratingData.avg_score).toFixed(1) : null;
+
+      const img = l.photo_url
+        ? `<img src="${l.photo_url}" alt="${l.title}" class="listing-hero">`
+        : `<div class="listing-hero-placeholder">🍲</div>`;
+
+      document.getElementById('content').innerHTML = `
+        ${img}
+        <div class="flex-between mb-1">
+          <h1 style="font-size:1.6rem;font-weight:700;">${l.title}</h1>
+          <span class="badge badge-${l.status}">${statusLabel(l.status)}</span>
+        </div>
+        <div class="info-row">
+          <span class="portions">🍽️ ${l.available_portions}/${l.total_portions} μερίδες</span>
+          ${avg ? `<span class="badge" style="background:#fff8e1;color:#e65100;">⭐ ${avg} (${ratingData.total} αξιολογήσεις)</span>` : ''}
+        </div>
+
+        <div class="card mb-2">
+          <div class="card-body">
+            <p class="fw-600 mb-1">👨‍🍳 Μάγειρας: ${l.cook_name}</p>
+            ${l.description ? `<p class="text-muted">${l.description}</p>` : ''}
+          </div>
+        </div>
+
+        <div class="card mb-2">
+          <div class="card-body">
+            <p class="fw-600 mb-1">📍 Σημείο Παραλαβής</p>
+            <p>${l.pickup_location}</p>
+            <p class="mt-1"><strong>🕐 Ώρες:</strong> ${l.pickup_time}</p>
+            ${l.pickup_lat && l.pickup_lng ? '<div id="mini-map"></div>' : ''}
+          </div>
+        </div>
+
+        ${allergens.length ? `
+        <div class="card mb-2">
+          <div class="card-body">
+            <p class="fw-600 mb-1">⚠️ Αλλεργιογόνα</p>
+            <div>${allergens.map(a => `<span class="badge badge-allergen">${allergenName(a)}</span>`).join(' ')}</div>
+          </div>
+        </div>` : ''}
+
+        <p class="text-sm text-muted mb-2">Δημιουργήθηκε: ${formatDate(l.created_at)}</p>
+
+        <div id="action-area"></div>
+        <div id="rating-area" class="mt-2"></div>
+      `;
+
+      if (l.pickup_lat && l.pickup_lng) {
+        const miniMap = L.map('mini-map').setView([l.pickup_lat, l.pickup_lng], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(miniMap);
+        L.marker([l.pickup_lat, l.pickup_lng]).addTo(miniMap).bindPopup(l.pickup_location).openPopup();
+      }
+
+      renderActions(l, myReq);
+    }
+
+    function renderActions(l, myReq) {
+      const area = document.getElementById('action-area');
+      const ratingArea = document.getElementById('rating-area');
+
+      if (currentUser.role !== 'consumer') return;
+
+      if (!myReq) {
+        if (l.status === 'active') {
+          area.innerHTML = `
+            <div id="req-alert"></div>
+            <button class="btn btn-primary" id="request-btn" style="width:100%">
+              🍽️ Ζητώ Μερίδα (κοστίζει 1 πόντο)
+            </button>`;
+          document.getElementById('request-btn').addEventListener('click', sendRequest);
+        } else {
+          area.innerHTML = `<div class="alert alert-info">Δεν υπάρχουν διαθέσιμες μερίδες αυτή τη στιγμή.</div>`;
+        }
+      } else {
+        area.innerHTML = `
+          <div class="alert alert-${myReq.status === 'rejected' || myReq.status === 'no_show' ? 'error' : 'info'}">
+            Το αίτημά σου: <strong>${statusLabel(myReq.status)}</strong>
+          </div>`;
+
+        if (myReq.status === 'picked_up') {
+          renderRatingForm(myReq, ratingArea);
+        }
+      }
+    }
+
+    async function sendRequest() {
+      const btn = document.getElementById('request-btn');
+      btn.disabled = true;
+      try {
+        await API.post('/api/requests', { listing_id: parseInt(listingId) });
+        showAlert(document.getElementById('req-alert'), 'Το αίτημά σου στάλθηκε! Περίμενε έγκριση.', 'success');
+        btn.remove();
+        currentUser = await getUser();
+        document.getElementById('nav-credits').textContent = '⭐ ' + currentUser.credits + ' πόντοι';
+      } catch (err) {
+        showAlert(document.getElementById('req-alert'), err.message);
+        btn.disabled = false;
+      }
+    }
+
+    function renderRatingForm(myReq, container) {
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <p class="fw-600 mb-1">⭐ Αξιολόγησε το γεύμα</p>
+            <div class="stars rating-stars" id="stars">
+              ${[1,2,3,4,5].map(i => `<span class="star" data-score="${i}">★</span>`).join('')}
+            </div>
+            <div id="rating-alert" class="mt-1"></div>
+            <button class="btn btn-primary mt-2" id="submit-rating" disabled>Υποβολή Αξιολόγησης</button>
+          </div>
+        </div>`;
+
+      let selected = 0;
+      const stars = container.querySelectorAll('.star');
+      stars.forEach(star => {
+        star.addEventListener('mouseenter', () => highlightStars(stars, star.dataset.score));
+        star.addEventListener('mouseleave', () => highlightStars(stars, selected));
+        star.addEventListener('click', () => {
+          selected = parseInt(star.dataset.score);
+          highlightStars(stars, selected);
+          document.getElementById('submit-rating').disabled = false;
+        });
+      });
+
+      document.getElementById('submit-rating').addEventListener('click', async () => {
+        try {
+          await API.post('/api/ratings', { request_id: myReq.id, score: selected });
+          showAlert(document.getElementById('rating-alert'), 'Η αξιολόγησή σου καταχωρήθηκε!', 'success');
+          document.getElementById('submit-rating').disabled = true;
+        } catch (err) {
+          showAlert(document.getElementById('rating-alert'), err.message);
+        }
+      });
+    }
+
+    function highlightStars(stars, count) {
+      stars.forEach(s => s.classList.toggle('filled', s.dataset.score <= count));
+    }
+  </script>
+</body>
+</html>

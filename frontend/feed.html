@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniBite – Αγγελίες</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    .feed-controls { background: var(--white); padding: 1rem 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+    .feed-controls .form-group { margin: 0; min-width: 160px; }
+    .listing-card.inactive { opacity: .65; }
+    .listing-card.inactive .card-img-placeholder,
+    .listing-card.inactive .card-img { filter: grayscale(70%); }
+    .view-toggle { display: flex; gap: .4rem; }
+    .view-toggle .btn.active { background: var(--green); color: var(--white); }
+    #list-view { display: block; }
+    #map-view { display: none; }
+    #map-view.active { display: block; }
+    #list-view.active { display: block; }
+    .distance-badge { display:inline-flex; align-items:center; gap:.3rem; background:#fff3e0; color:#e65100; border:1px solid #ffcc80; border-radius:20px; padding:.2rem .7rem; font-size:.82rem; font-weight:600; margin-top:.4rem; }
+    .location-row { display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; }
+    .location-row .form-group { margin:0; }
+    #distance-label { font-size:.82rem; color:var(--gray-600); white-space:nowrap; }
+    .results-count { font-size:.88rem; color:var(--gray-600); margin-bottom:.75rem; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand"><span>🍽️</span> UniBite</div>
+    <ul class="navbar-nav">
+      <li><a href="/feed.html" class="active">Αγγελίες</a></li>
+      <li><a href="/my-requests.html">Τα Αιτήματά μου</a></li>
+      <li><span class="navbar-credits" id="nav-credits">⭐ —</span></li>
+      <li><a href="#" id="logout-btn">Έξοδος</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>Διαθέσιμες Μερίδες</h1>
+      <p>Βρες φαγητό από συμφοιτητές σου</p>
+    </div>
+  </div>
+
+  <div class="feed-controls container">
+    <div class="form-group">
+      <label class="form-label">Αναζήτηση</label>
+      <input type="text" class="form-control" id="search-input" placeholder="Τίτλος αγγελίας...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ταξινόμηση</label>
+      <select class="form-control" id="sort-select">
+        <option value="newest">Νεότερες πρώτα</option>
+        <option value="portions">Περισσότερες μερίδες</option>
+        <option value="distance">Κοντινότερες πρώτα</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Εξαίρεση αλλεργιογόνου</label>
+      <select class="form-control" id="allergen-filter">
+        <option value="">Όλα</option>
+        <option value="gluten">Χωρίς γλουτένη</option>
+        <option value="milk">Χωρίς γάλα</option>
+        <option value="eggs">Χωρίς αυγά</option>
+        <option value="nuts">Χωρίς ξηρούς καρπούς</option>
+        <option value="peanuts">Χωρίς φιστίκια</option>
+        <option value="fish">Χωρίς ψάρι</option>
+      </select>
+    </div>
+    <!-- Distance filter -->
+    <div class="form-group" style="min-width:220px;">
+      <label class="form-label">Τοποθεσία μου <span style="font-weight:400;color:var(--gray-600)">(lat, lng)</span></label>
+      <div style="display:flex;gap:.4rem;align-items:center;">
+        <input type="number" id="input-lat" class="form-control" placeholder="Lat π.χ. 37.97" step="any" style="width:110px;">
+        <input type="number" id="input-lng" class="form-control" placeholder="Lng π.χ. 23.73" step="any" style="width:110px;">
+        <button class="btn btn-outline btn-sm" id="set-location-btn" title="Εφαρμογή">✓</button>
+        <button class="btn btn-secondary btn-sm" id="clear-location-btn" title="Καθαρισμός" style="display:none">✕</button>
+      </div>
+      <div style="font-size:.75rem;color:var(--gray-600);margin-top:.25rem;">ή κάνε κλικ στον χάρτη για να ορίσεις σημείο</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Μέγιστη απόσταση</label>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <input type="range" id="distance-range" min="0.5" max="20" step="0.5" value="20" style="width:110px;cursor:pointer;" disabled>
+        <span id="distance-label" style="color:var(--gray-400)">— km</span>
+      </div>
+    </div>
+    <div class="view-toggle">
+      <button class="btn btn-secondary active" id="btn-list-view">☰ Λίστα</button>
+      <button class="btn btn-secondary" id="btn-map-view">🗺️ Χάρτης</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="alert-box"></div>
+    <div id="results-count" class="results-count hidden"></div>
+
+    <!-- List View -->
+    <div id="list-view" class="active">
+      <div id="listings-grid" class="grid grid-listings">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <!-- Map View -->
+    <div id="map-view">
+      <div id="map"></div>
+      <div id="map-listings" class="grid grid-listings mt-2"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    let allListings = [];
+    let map = null;
+    let markers = [];
+    let userLat = null;
+    let userLng = null;
+    let userMarker = null;
+
+    (async () => {
+      const user = await getUser();
+      if (!user) { location.href = '/'; return; }
+      if (user.role !== 'consumer') { redirectByRole(user.role); return; }
+      document.getElementById('nav-credits').textContent = '⭐ ' + user.credits + ' πόντοι';
+      loadNotifications();
+      await loadListings();
+    })();
+
+    document.getElementById('logout-btn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await API.post('/api/auth/logout');
+      location.href = '/';
+    });
+
+    async function loadListings() {
+      try {
+        allListings = await API.get('/api/listings');
+        renderListings();
+      } catch (err) {
+        showAlert(document.getElementById('alert-box'), err.message);
+      }
+    }
+
+    // Haversine distance in km
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2)**2 +
+                Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function getFiltered() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const sort = document.getElementById('sort-select').value;
+      const allergen = document.getElementById('allergen-filter').value;
+      const maxDist = parseFloat(document.getElementById('distance-range').value);
+
+      let list = allListings.map(l => {
+        let dist = null;
+        if (userLat !== null && l.pickup_lat && l.pickup_lng) {
+          dist = haversineKm(userLat, userLng, parseFloat(l.pickup_lat), parseFloat(l.pickup_lng));
+        }
+        return { ...l, dist };
+      }).filter(l => {
+        if (q && !l.title.toLowerCase().includes(q)) return false;
+        if (allergen) {
+          const allergens = typeof l.allergens === 'string' ? JSON.parse(l.allergens || '[]') : (l.allergens || []);
+          if (allergens.includes(allergen)) return false;
+        }
+        // Distance filter only when user location is set
+        if (userLat !== null && l.dist !== null && l.dist > maxDist) return false;
+        return true;
+      });
+
+      if (sort === 'portions') {
+        list.sort((a, b) => b.available_portions - a.available_portions);
+      } else if (sort === 'distance' && userLat !== null) {
+        list.sort((a, b) => {
+          if (a.dist === null) return 1;
+          if (b.dist === null) return -1;
+          return a.dist - b.dist;
+        });
+      }
+
+      return list;
+    }
+
+    function renderListings() {
+      const grid = document.getElementById('listings-grid');
+      const list = getFiltered();
+      const countEl = document.getElementById('results-count');
+      countEl.textContent = `${list.length} αγγελίες βρέθηκαν`;
+      countEl.classList.remove('hidden');
+
+      if (list.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><div class="emoji">🍽️</div><p>Δεν βρέθηκαν αγγελίες</p></div>';
+        return;
+      }
+      grid.innerHTML = list.map(l => listingCard(l)).join('');
+      if (map) updateMarkers();
+    }
+
+    function listingCard(l) {
+      const isInactive = l.status === 'inactive';
+      const allergens = typeof l.allergens === 'string' ? JSON.parse(l.allergens || '[]') : (l.allergens || []);
+      const img = l.photo_url
+        ? `<img src="${l.photo_url}" alt="${l.title}" class="card-img">`
+        : `<div class="card-img-placeholder">🍲</div>`;
+      const distBadge = l.dist !== null ? `<div class="distance-badge">📍 ${l.dist.toFixed(1)} km μακριά</div>` : '';
+      return `
+        <div class="card listing-card ${isInactive ? 'inactive' : ''}" onclick="location.href='/listing.html?id=${l.id}'">
+          ${img}
+          <div class="card-body">
+            <div class="flex-between mb-1">
+              <span class="badge badge-${l.status}">${statusLabel(l.status)}</span>
+              <span class="portions">🍽️ ${l.available_portions}/${l.total_portions}</span>
+            </div>
+            <div class="card-title">${l.title}</div>
+            <div class="card-text text-sm">👨‍🍳 ${l.cook_name}</div>
+            <div class="card-text text-sm mt-1">📍 ${l.pickup_location}</div>
+            <div class="card-text text-sm">🕐 ${l.pickup_time}</div>
+            ${distBadge}
+            ${allergens.length ? `<div class="mt-1">${allergens.map(a => `<span class="badge badge-allergen">${allergenName(a)}</span>`).join(' ')}</div>` : ''}
+          </div>
+        </div>`;
+    }
+
+    // Manual location input — marker must be placed BEFORE renderListings so updateMarkers() doesn't interfere
+    function applyLocation(lat, lng) {
+      userLat = lat;
+      userLng = lng;
+      document.getElementById('input-lat').value = lat.toFixed(5);
+      document.getElementById('input-lng').value = lng.toFixed(5);
+      document.getElementById('distance-range').disabled = false;
+      document.getElementById('distance-label').style.color = '';
+      document.getElementById('distance-label').textContent = document.getElementById('distance-range').value + ' km';
+      document.getElementById('clear-location-btn').style.display = '';
+      document.getElementById('sort-select').value = 'distance';
+
+      // Place marker first — renderListings → updateMarkers only clears the markers[] array, never userMarker
+      if (map) {
+        if (userMarker) userMarker.remove();
+        userMarker = L.circleMarker([lat, lng], { radius: 14, color: '#e87c2e', fillColor: '#e87c2e', fillOpacity: 0.9 })
+          .addTo(map).bindPopup('<strong>📍 Η τοποθεσία μου</strong>').openPopup();
+        map.setView([lat, lng], 14);
+      }
+
+      renderListings();
+    }
+
+    function clearLocation() {
+      userLat = null; userLng = null;
+      document.getElementById('input-lat').value = '';
+      document.getElementById('input-lng').value = '';
+      document.getElementById('distance-range').disabled = true;
+      document.getElementById('distance-label').textContent = '— km';
+      document.getElementById('distance-label').style.color = 'var(--gray-400)';
+      document.getElementById('clear-location-btn').style.display = 'none';
+      if (userMarker) { userMarker.remove(); userMarker = null; }
+      renderListings();
+    }
+
+    document.getElementById('set-location-btn').addEventListener('click', () => {
+      const lat = parseFloat(document.getElementById('input-lat').value);
+      const lng = parseFloat(document.getElementById('input-lng').value);
+      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        showAlert(document.getElementById('alert-box'), 'Εισάγαγε έγκυρες συντεταγμένες (π.χ. lat: 37.97, lng: 23.73)', 'error');
+        return;
+      }
+      document.getElementById('alert-box').innerHTML = '';
+      applyLocation(lat, lng);
+    });
+
+    document.getElementById('clear-location-btn').addEventListener('click', clearLocation);
+
+    // Distance range slider
+    document.getElementById('distance-range').addEventListener('input', function() {
+      document.getElementById('distance-label').textContent = this.value + ' km';
+      renderListings();
+    });
+
+    ['search-input', 'sort-select', 'allergen-filter'].forEach(id => {
+      document.getElementById(id).addEventListener('input', renderListings);
+    });
+
+    // View toggle
+    document.getElementById('btn-list-view').addEventListener('click', () => {
+      document.getElementById('list-view').classList.add('active');
+      document.getElementById('map-view').classList.remove('active');
+      document.getElementById('btn-list-view').classList.add('active');
+      document.getElementById('btn-map-view').classList.remove('active');
+    });
+
+    document.getElementById('btn-map-view').addEventListener('click', () => {
+      document.getElementById('map-view').classList.add('active');
+      document.getElementById('list-view').classList.remove('active');
+      document.getElementById('btn-map-view').classList.add('active');
+      document.getElementById('btn-list-view').classList.remove('active');
+      initMap();
+    });
+
+    function initMap() {
+      if (map) { map.invalidateSize(); updateMarkers(); return; }
+      const center = userLat ? [userLat, userLng] : [37.9838, 23.7275];
+      map = L.map('map').setView(center, 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Κλικ στον χάρτη = ορισμός τοποθεσίας χρήστη
+      map.on('click', (e) => applyLocation(e.latlng.lat, e.latlng.lng));
+
+      // Tooltip οδηγίας
+      const hint = L.control({ position: 'bottomleft' });
+      hint.onAdd = () => {
+        const d = L.DomUtil.create('div');
+        d.style.cssText = 'background:rgba(255,255,255,.9);padding:.4rem .7rem;border-radius:6px;font-size:.8rem;color:#555;box-shadow:0 1px 4px rgba(0,0,0,.2)';
+        d.textContent = '📍 Κάνε κλικ στον χάρτη για να ορίσεις την τοποθεσία σου';
+        return d;
+      };
+      hint.addTo(map);
+
+      if (userLat) {
+        userMarker = L.circleMarker([userLat, userLng], { radius: 12, color: '#e87c2e', fillColor: '#e87c2e', fillOpacity: 0.8 })
+          .addTo(map).bindPopup('Η τοποθεσία μου');
+      }
+      updateMarkers();
+    }
+
+    function updateMarkers() {
+      markers.forEach(m => m.remove());
+      markers = [];
+      const list = getFiltered().filter(l => l.pickup_lat && l.pickup_lng);
+      list.forEach(l => {
+        const color = l.status === 'inactive' ? '#adb5bd' : '#2d7a4f';
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="background:${color};color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.2);">🍲</div>`,
+          iconSize: [36, 36], iconAnchor: [18, 18]
+        });
+        const distText = l.dist !== null ? `<br>📍 ${l.dist.toFixed(1)} km` : '';
+        const m = L.marker([l.pickup_lat, l.pickup_lng], { icon })
+          .addTo(map)
+          .bindPopup(`<strong>${l.title}</strong><br>👨‍🍳 ${l.cook_name}<br>🍽️ ${l.available_portions} μερίδες${distText}<br><a href="/listing.html?id=${l.id}">Δες περισσότερα →</a>`);
+        markers.push(m);
+      });
+      document.getElementById('map-listings').innerHTML = list.map(l => listingCard(l)).join('');
+    }
+  </script>
+</body>
+</html>

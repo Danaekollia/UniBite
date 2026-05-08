@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniBite – Admin Dashboard</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <style>
+    .leaderboard-entry { display: flex; align-items: center; gap: 1rem; padding: .8rem 0; border-bottom: 1px solid var(--gray-100); }
+    .leaderboard-entry:last-child { border-bottom: none; }
+    .rank { font-size: 1.4rem; font-weight: 700; width: 36px; text-align: center; flex-shrink: 0; }
+    .rank-1 { color: #f9a825; }
+    .rank-2 { color: var(--gray-600); }
+    .rank-3 { color: #8d6e63; }
+    .entry-info { flex: 1; }
+    .entry-name { font-weight: 600; }
+    .entry-sub { font-size: .85rem; color: var(--gray-600); }
+    .entry-score { font-weight: 700; color: var(--green); font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand"><span>🍽️</span> UniBite</div>
+    <ul class="navbar-nav">
+      <li><a href="#" id="logout-btn">Έξοδος</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>Admin Dashboard</h1>
+      <p>Στατιστικά πλατφόρμας</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:1rem;padding-bottom:3rem;">
+    <div id="alert-box"></div>
+
+    <!-- Stats -->
+    <h2 class="mb-2" style="font-size:1.1rem;font-weight:700;">📊 Στατιστικά Τελευταίου Μήνα</h2>
+    <div class="grid grid-3 mb-3" id="stats-grid">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="grid grid-2 gap-md" style="margin-top:2rem;">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title mb-2">🏆 Top Donors</h3>
+          <div id="top-donors"><div class="spinner"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title mb-2">⭐ Highest Rated Γεύματα</h3>
+          <div id="top-rated"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    (async () => {
+      const user = await getUser();
+      if (!user) { location.href = '/'; return; }
+      if (user.role !== 'admin') { redirectByRole(user.role); return; }
+      loadNotifications();
+      await Promise.all([loadStats(), loadLeaderboard()]);
+    })();
+
+    document.getElementById('logout-btn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await API.post('/api/auth/logout');
+      location.href = '/';
+    });
+
+    async function loadStats() {
+      const grid = document.getElementById('stats-grid');
+      try {
+        const stats = await API.get('/api/admin/stats');
+        grid.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-number">${stats.portions_shared_last_month}</div>
+            <div class="stat-label">Μερίδες τελευταίου μήνα</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${stats.total_users}</div>
+            <div class="stat-label">Εγγεγραμμένοι φοιτητές</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${stats.total_listings}</div>
+            <div class="stat-label">Συνολικές αγγελίες</div>
+          </div>`;
+      } catch (err) {
+        grid.innerHTML = '';
+        showAlert(document.getElementById('alert-box'), err.message);
+      }
+    }
+
+    async function loadLeaderboard() {
+      try {
+        const data = await API.get('/api/admin/leaderboard');
+        renderDonors(data.top_donors);
+        renderRated(data.top_rated);
+      } catch (err) {
+        showAlert(document.getElementById('alert-box'), err.message);
+      }
+    }
+
+    function renderDonors(donors) {
+      const container = document.getElementById('top-donors');
+      if (!donors || donors.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="emoji">🏅</div><p>Δεν υπάρχουν δεδομένα ακόμα</p></div>';
+        return;
+      }
+      container.innerHTML = donors.map((d, i) => `
+        <div class="leaderboard-entry">
+          <div class="rank rank-${i+1}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)+'.'}</div>
+          <div class="entry-info">
+            <div class="entry-name">${d.username}</div>
+            <div class="entry-sub">Μερίδες</div>
+          </div>
+          <div class="entry-score">${d.portions_given}</div>
+        </div>`).join('');
+    }
+
+    function renderRated(rated) {
+      const container = document.getElementById('top-rated');
+      if (!rated || rated.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="emoji">⭐</div><p>Δεν υπάρχουν αξιολογήσεις ακόμα</p></div>';
+        return;
+      }
+      container.innerHTML = rated.map((r, i) => `
+        <div class="leaderboard-entry">
+          <div class="rank rank-${i+1}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)+'.'}</div>
+          <div class="entry-info">
+            <div class="entry-name">${r.title}</div>
+            <div class="entry-sub">👨‍🍳 ${r.cook_name} · ${r.rating_count} αξιολογήσεις</div>
+          </div>
+          <div class="entry-score">⭐ ${parseFloat(r.avg_score).toFixed(1)}</div>
+        </div>`).join('');
+    }
+  </script>
+</body>
+</html>
