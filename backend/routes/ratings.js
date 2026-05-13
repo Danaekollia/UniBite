@@ -61,4 +61,29 @@ router.get('/listing/:id', async (req, res) => {
   }
 });
 
+// GET /api/ratings/cook-history  – all ratings received by the logged-in cook
+router.get('/cook-history', requireRole('cook'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT rt.id, rt.score, rt.created_at,
+              l.title AS listing_title,
+              u.username AS consumer_name,
+              CASE WHEN rt.score > 3 THEN 2 ELSE 1 END AS credits_earned
+       FROM ratings rt
+       JOIN listings l ON rt.listing_id = l.id
+       JOIN users u ON rt.consumer_id = u.id
+       WHERE l.cook_id = ?
+       ORDER BY rt.created_at DESC`,
+      [req.session.user.id]
+    );
+    const total_credits = rows.reduce((sum, r) => sum + r.credits_earned, 0);
+    const avg_score = rows.length
+      ? (rows.reduce((s, r) => s + r.score, 0) / rows.length).toFixed(1)
+      : null;
+    res.json({ ratings: rows, total_credits_from_meals: total_credits, avg_score, total_ratings: rows.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Σφάλμα server' });
+  }
+});
+
 module.exports = router;
