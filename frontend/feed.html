@@ -27,20 +27,28 @@
   </style>
 </head>
 <body>
-  <nav class="navbar">
-    <div class="navbar-brand"><span>🍽️</span> UniBite</div>
-    <ul class="navbar-nav">
-      <li><a href="/feed.html" class="active">Αγγελίες</a></li>
-      <li><a href="/my-requests.html">Τα Αιτήματά μου</a></li>
-      <li><span class="navbar-credits" id="nav-credits">⭐ —</span></li>
-      <li><a href="#" id="logout-btn">Έξοδος</a></li>
-    </ul>
-  </nav>
-
-  <div class="page-header">
+  <div class="site-header">
     <div class="container">
-      <h1>Διαθέσιμες Μερίδες</h1>
-      <p>Βρες φαγητό από συμφοιτητές σου</p>
+      <div class="site-header-topbar">
+        <div class="site-header-brand">
+          <svg class="ico ico-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="50" cy="42" r="30"/><ellipse cx="38" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><ellipse cx="62" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><path d="M34 49 Q50 63 66 49"/><line x1="6" y1="25" x2="6" y2="46"/><line x1="13" y1="22" x2="13" y2="46"/><line x1="20" y1="25" x2="20" y2="46"/><line x1="6" y1="46" x2="20" y2="46"/><line x1="13" y1="46" x2="11" y2="88"/><ellipse cx="87" cy="38" rx="8" ry="13"/><line x1="87" y1="51" x2="89" y2="88"/></svg>
+          UniBite
+        </div>
+        <ul class="site-header-nav">
+          <li><span class="site-header-credits" id="nav-credits">—</span></li>
+          <li><a href="#" id="logout-btn">Έξοδος</a></li>
+        </ul>
+      </div>
+      <div class="site-header-content">
+        <h1 id="user-greeting">Γεια σου!</h1>
+      </div>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:1rem;">
+    <div class="tabs" style="margin-bottom:0;">
+      <a href="/feed.html" class="tab-btn active">Αγγελίες</a>
+      <a href="/my-requests.html" class="tab-btn">Τα Αιτήματά μου</a>
     </div>
   </div>
 
@@ -88,8 +96,8 @@
       </div>
     </div>
     <div class="view-toggle">
-      <button class="btn btn-secondary active" id="btn-list-view">☰ Λίστα</button>
-      <button class="btn btn-secondary" id="btn-map-view">🗺️ Χάρτης</button>
+      <button class="btn btn-secondary active" id="btn-list-view"><svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg> Λίστα</button>
+      <button class="btn btn-secondary" id="btn-map-view"><svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> Χάρτης</button>
     </div>
   </div>
 
@@ -125,7 +133,8 @@
       const user = await getUser();
       if (!user) { location.href = '/'; return; }
       if (user.role !== 'consumer') { redirectByRole(user.role); return; }
-      document.getElementById('nav-credits').textContent = '⭐ ' + user.credits + ' πόντοι';
+      document.getElementById('user-greeting').textContent = 'Γεια σου, ' + user.username + '!';
+      document.getElementById('nav-credits').innerHTML = ICO.star + '&nbsp;' + user.credits + ' πόντοι';
       loadNotifications();
       await loadListings();
     })();
@@ -199,7 +208,7 @@
       countEl.classList.remove('hidden');
 
       if (list.length === 0) {
-        grid.innerHTML = '<div class="empty-state"><div class="emoji">🍽️</div><p>Δεν βρέθηκαν αγγελίες</p></div>';
+        grid.innerHTML = `<div class="empty-state">${ICO.forkXl}<p>Δεν βρέθηκαν αγγελίες</p></div>`;
         return;
       }
       grid.innerHTML = list.map(l => listingCard(l)).join('');
@@ -211,20 +220,20 @@
       const allergens = typeof l.allergens === 'string' ? JSON.parse(l.allergens || '[]') : (l.allergens || []);
       const img = l.photo_url
         ? `<img src="${l.photo_url}" alt="${l.title}" class="card-img">`
-        : `<div class="card-img-placeholder">🍲</div>`;
-      const distBadge = l.dist !== null ? `<div class="distance-badge">📍 ${l.dist.toFixed(1)} km μακριά</div>` : '';
+        : `<div class="card-img-placeholder"><svg style="width:36px;height:36px;opacity:.3;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg></div>`;
+      const distBadge = l.dist !== null ? `<div class="distance-badge">${ICO.pin} ${l.dist.toFixed(1)} km μακριά</div>` : '';
       return `
         <div class="card listing-card ${isInactive ? 'inactive' : ''}" onclick="location.href='/listing.html?id=${l.id}'">
           ${img}
           <div class="card-body">
             <div class="flex-between mb-1">
               <span class="badge badge-${l.status}">${statusLabel(l.status)}</span>
-              <span class="portions">🍽️ ${l.available_portions}/${l.total_portions}</span>
+              <span class="portions">${ICO.fork} ${l.available_portions}/${l.total_portions}</span>
             </div>
             <div class="card-title">${l.title}</div>
-            <div class="card-text text-sm">👨‍🍳 ${l.cook_name}</div>
-            <div class="card-text text-sm mt-1">📍 ${l.pickup_location}</div>
-            <div class="card-text text-sm">🕐 ${l.pickup_time}</div>
+            <div class="card-text text-sm">${ICO.user} ${l.cook_name}</div>
+            <div class="card-text text-sm mt-1">${ICO.pin} ${l.pickup_location}</div>
+            <div class="card-text text-sm">${ICO.clock} ${l.pickup_time}</div>
             ${distBadge}
             ${allergens.length ? `<div class="mt-1">${allergens.map(a => `<span class="badge badge-allergen">${allergenName(a)}</span>`).join(' ')}</div>` : ''}
           </div>
@@ -247,7 +256,7 @@
       if (map) {
         if (userMarker) userMarker.remove();
         userMarker = L.circleMarker([lat, lng], { radius: 14, color: '#e87c2e', fillColor: '#e87c2e', fillOpacity: 0.9 })
-          .addTo(map).bindPopup('<strong>📍 Η τοποθεσία μου</strong>').openPopup();
+          .addTo(map).bindPopup('<strong>Η τοποθεσία μου</strong>').openPopup();
         map.setView([lat, lng], 14);
       }
 
@@ -321,14 +330,14 @@
       hint.onAdd = () => {
         const d = L.DomUtil.create('div');
         d.style.cssText = 'background:rgba(255,255,255,.9);padding:.4rem .7rem;border-radius:6px;font-size:.8rem;color:#555;box-shadow:0 1px 4px rgba(0,0,0,.2)';
-        d.textContent = '📍 Κάνε κλικ στον χάρτη για να ορίσεις την τοποθεσία σου';
+        d.textContent = 'Κάνε κλικ στον χάρτη για να ορίσεις την τοποθεσία σου';
         return d;
       };
       hint.addTo(map);
 
       if (userLat) {
         userMarker = L.circleMarker([userLat, userLng], { radius: 12, color: '#e87c2e', fillColor: '#e87c2e', fillOpacity: 0.8 })
-          .addTo(map).bindPopup('Η τοποθεσία μου');
+          .addTo(map).bindPopup('Τοποθεσία μου');
       }
       updateMarkers();
     }
@@ -341,13 +350,13 @@
         const color = l.status === 'inactive' ? '#adb5bd' : '#2d7a4f';
         const icon = L.divIcon({
           className: '',
-          html: `<div style="background:${color};color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.2);">🍲</div>`,
+          html: `<div style="background:${color};border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2);"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg></div>`,
           iconSize: [36, 36], iconAnchor: [18, 18]
         });
-        const distText = l.dist !== null ? `<br>📍 ${l.dist.toFixed(1)} km` : '';
+        const distText = l.dist !== null ? ` · ${l.dist.toFixed(1)} km` : '';
         const m = L.marker([l.pickup_lat, l.pickup_lng], { icon })
           .addTo(map)
-          .bindPopup(`<strong>${l.title}</strong><br>👨‍🍳 ${l.cook_name}<br>🍽️ ${l.available_portions} μερίδες${distText}<br><a href="/listing.html?id=${l.id}">Δες περισσότερα →</a>`);
+          .bindPopup(`<strong>${l.title}</strong><br>${l.cook_name}<br>${l.available_portions} μερίδες${distText}<br><a href="/listing.html?id=${l.id}">Δες περισσότερα →</a>`);
         markers.push(m);
       });
       document.getElementById('map-listings').innerHTML = list.map(l => listingCard(l)).join('');

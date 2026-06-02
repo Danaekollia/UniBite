@@ -20,20 +20,28 @@
   </style>
 </head>
 <body>
-  <nav class="navbar">
-    <div class="navbar-brand"><span>🍽️</span> UniBite</div>
-    <ul class="navbar-nav">
-      <li><a href="/feed.html">Αγγελίες</a></li>
-      <li><a href="/my-requests.html" class="active">Τα Αιτήματά μου</a></li>
-      <li><span class="navbar-credits" id="nav-credits">⭐ —</span></li>
-      <li><a href="#" id="logout-btn">Έξοδος</a></li>
-    </ul>
-  </nav>
-
-  <div class="page-header">
+  <div class="site-header">
     <div class="container">
-      <h1>Τα Αιτήματά μου</h1>
-      <p>Παρακολούθηση αιτημάτων & αξιολόγηση γευμάτων</p>
+      <div class="site-header-topbar">
+        <div class="site-header-brand">
+          <svg class="ico ico-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="50" cy="42" r="30"/><ellipse cx="38" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><ellipse cx="62" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><path d="M34 49 Q50 63 66 49"/><line x1="6" y1="25" x2="6" y2="46"/><line x1="13" y1="22" x2="13" y2="46"/><line x1="20" y1="25" x2="20" y2="46"/><line x1="6" y1="46" x2="20" y2="46"/><line x1="13" y1="46" x2="11" y2="88"/><ellipse cx="87" cy="38" rx="8" ry="13"/><line x1="87" y1="51" x2="89" y2="88"/></svg>
+          UniBite
+        </div>
+        <ul class="site-header-nav">
+          <li><span class="site-header-credits" id="nav-credits">—</span></li>
+          <li><a href="#" id="logout-btn">Έξοδος</a></li>
+        </ul>
+      </div>
+      <div class="site-header-content">
+        <h1 id="user-greeting">Γεια σου!</h1>
+      </div>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:1rem;">
+    <div class="tabs" style="margin-bottom:0;">
+      <a href="/feed.html" class="tab-btn">Αγγελίες</a>
+      <a href="/my-requests.html" class="tab-btn active">Τα Αιτήματά μου</a>
     </div>
   </div>
 
@@ -59,7 +67,8 @@
       const user = await getUser();
       if (!user) { location.href = '/'; return; }
       if (user.role !== 'consumer') { redirectByRole(user.role); return; }
-      document.getElementById('nav-credits').textContent = '⭐ ' + user.credits + ' πόντοι';
+      document.getElementById('user-greeting').textContent = 'Γεια σου, ' + user.username + '!';
+      document.getElementById('nav-credits').innerHTML = ICO.star + '&nbsp;' + user.credits + ' πόντοι';
       loadNotifications();
       await loadRequests();
     })();
@@ -101,7 +110,7 @@
       const container = document.getElementById('requests-container');
       const list = getVisible();
       if (list.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="emoji">📭</div><p>Δεν υπάρχουν αιτήματα εδώ</p></div>';
+        container.innerHTML = `<div class="empty-state">${ICO.inboxXl}<p>Δεν υπάρχουν αιτήματα εδώ</p></div>`;
         return;
       }
       container.innerHTML = list.map(r => requestCard(r)).join('');
@@ -130,7 +139,7 @@
             showAlert(document.getElementById('alert-box'), 'Η αξιολόγηση καταχωρήθηκε! +' + (score > 3 ? 2 : 1) + ' πόντοι για τον μάγειρα.', 'success');
             await loadRequests();
             const user = await getUser();
-            document.getElementById('nav-credits').textContent = '⭐ ' + user.credits + ' πόντοι';
+            document.getElementById('nav-credits').innerHTML = ICO.star + '&nbsp;' + user.credits + ' πόντοι';
           } catch (err) {
             showAlert(document.getElementById('alert-box'), err.message);
             btn.disabled = false;
@@ -143,7 +152,7 @@
       const needsRating = r.status === 'picked_up' && !r.rating_id;
       const ratingSection = needsRating ? `
         <div class="pending-rating-box">
-          <p>⭐ Αξιολόγησε το γεύμα — έχεις 48 ώρες!</p>
+          <p>${ICO.star} Αξιολόγησε το γεύμα — έχεις 48 ώρες!</p>
           <div class="rating-inline" data-selected="0">
             ${[1,2,3,4,5].map(i => `<span class="star" data-score="${i}">★</span>`).join('')}
           </div>
@@ -152,7 +161,7 @@
 
       const ratedSection = r.rating_id ? `
         <div class="alert alert-success" style="margin:0;padding:.6rem 1rem;">
-          ✅ Αξιολόγησες με ${'★'.repeat(r.rating_score)}${'☆'.repeat(5 - r.rating_score)} (${r.rating_score}/5)
+          ${ICO.check} Αξιολόγησες με ${'★'.repeat(r.rating_score)}${'☆'.repeat(5 - r.rating_score)} (${r.rating_score}/5)
         </div>` : '';
 
       return `
@@ -161,8 +170,8 @@
             <div>
               <div class="request-card-title">${r.listing_title}</div>
               <div class="request-card-meta">
-                <span>👨‍🍳 ${r.cook_name}</span>
-                <span>📅 ${formatDate(r.created_at)}</span>
+                <span>${ICO.user} ${r.cook_name}</span>
+                <span>${ICO.calendar} ${formatDate(r.created_at)}</span>
               </div>
             </div>
             <span class="badge badge-${r.status}">${statusLabel(r.status)}</span>

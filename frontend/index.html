@@ -7,17 +7,27 @@
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/responsive.css">
   <style>
-    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #2d7a4f 0%, #4caf78 100%); }
-    .auth-card { background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.18); width: 100%; max-width: 440px; padding: 2.5rem 2rem; margin: 1rem; }
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(145deg, #b71c1c 0%, #e53935 55%, #c62828 100%); overflow: hidden; --primary: #e53935; --primary-dark: #b71c1c; --primary-light: #ef5350; }
+    .auth-card { background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.28); width: 100%; max-width: 440px; padding: 2.5rem 2rem; margin: 1rem; position: relative; z-index: 1; }
     .auth-logo { text-align: center; margin-bottom: 1.5rem; }
-    .auth-logo h1 { color: var(--green); font-size: 2rem; }
+    .auth-logo h1 { color: var(--primary); font-size: 2rem; }
     .auth-logo p { color: var(--gray-600); font-size: .95rem; margin-top: .3rem; }
+
+    /* food pattern: multiply makes white areas transparent → shows red bg */
+    .food-pattern { position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background: url('/imgfood.png') repeat; background-size: 500px;
+      mix-blend-mode: multiply; opacity: 0.85; }
+
   </style>
 </head>
 <body>
+
+  <!-- food illustration background -->
+  <div class="food-pattern"></div>
+
   <div class="auth-card">
     <div class="auth-logo">
-      <h1>🍽️ UniBite</h1>
+      <h1><svg class="ico ico-logo" style="width:46px;height:46px;vertical-align:-12px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="50" cy="42" r="30"/><ellipse cx="38" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><ellipse cx="62" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><path d="M34 49 Q50 63 66 49"/><line x1="6" y1="25" x2="6" y2="46"/><line x1="13" y1="22" x2="13" y2="46"/><line x1="20" y1="25" x2="20" y2="46"/><line x1="6" y1="46" x2="20" y2="46"/><line x1="13" y1="46" x2="11" y2="88"/><ellipse cx="87" cy="38" rx="8" ry="13"/><line x1="87" y1="51" x2="89" y2="88"/></svg> UniBite</h1>
       <p>Φοιτητικό Food Sharing</p>
     </div>
 
@@ -66,7 +76,7 @@
           </select>
         </div>
         <div class="alert alert-info mt-1">
-          🎁 Ξεκινάς με <strong>5 πόντους</strong> για να κάνεις τις πρώτες σου κρατήσεις!
+          <svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Ξεκινάς με <strong>5 πόντους</strong> για να κάνεις τις πρώτες σου κρατήσεις!
         </div>
         <button type="submit" class="btn btn-primary btn-block mt-2">Εγγραφή</button>
       </form>

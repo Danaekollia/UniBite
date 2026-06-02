@@ -31,6 +31,16 @@ app.use('/api/ratings', require('./routes/ratings'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/notifications', notificationsRouter);
 
+// DB connection test
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT 1 AS ok');
+    res.json({ connected: true, result: rows[0] });
+  } catch (err) {
+    res.json({ connected: false, error: err.message, code: err.code });
+  }
+});
+
 // Current user info
 const pool = require('./config/db');
 app.get('/api/users/me', async (req, res) => {

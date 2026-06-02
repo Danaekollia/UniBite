@@ -21,10 +21,11 @@ router.post('/register', async (req, res) => {
     req.session.user = user;
     res.status(201).json({ user });
   } catch (err) {
+    console.error('[REGISTER ERROR]', err.message, err.code);
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'Το username ή email χρησιμοποιείται ήδη' });
     }
-    res.status(500).json({ error: 'Σφάλμα server' });
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -19,19 +19,22 @@
     .coords-display { background: var(--green-pale); color: var(--green); border-radius: var(--radius-sm); padding: .35rem .7rem; font-size: .82rem; font-weight: 600; margin-top: .4rem; display: none; }
   </style>
 </head>
-<body>
-  <nav class="navbar">
-    <div class="navbar-brand"><span>🍽️</span> UniBite</div>
-    <ul class="navbar-nav">
-      <li><span class="navbar-credits" id="nav-credits">⭐ —</span></li>
-      <li><a href="#" id="logout-btn">Έξοδος</a></li>
-    </ul>
-  </nav>
-
-  <div class="page-header">
+<body class="page-cook">
+  <div class="site-header">
     <div class="container">
-      <h1>Dashboard Μάγειρα</h1>
-      <p id="welcome-msg">Καλώς ήρθες!</p>
+      <div class="site-header-topbar">
+        <div class="site-header-brand">
+          <svg class="ico ico-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="50" cy="42" r="30"/><ellipse cx="38" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><ellipse cx="62" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><path d="M34 49 Q50 63 66 49"/><line x1="6" y1="25" x2="6" y2="46"/><line x1="13" y1="22" x2="13" y2="46"/><line x1="20" y1="25" x2="20" y2="46"/><line x1="6" y1="46" x2="20" y2="46"/><line x1="13" y1="46" x2="11" y2="88"/><ellipse cx="87" cy="38" rx="8" ry="13"/><line x1="87" y1="51" x2="89" y2="88"/></svg>
+          UniBite
+        </div>
+        <ul class="site-header-nav">
+          <li><span class="site-header-credits" id="nav-credits">—</span></li>
+          <li><a href="#" id="logout-btn">Έξοδος</a></li>
+        </ul>
+      </div>
+      <div class="site-header-content">
+        <h1 id="welcome-msg">Γεια σου!</h1>
+      </div>
     </div>
   </div>
 
@@ -39,6 +42,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="listings">Οι Αγγελίες Μου</button>
       <button class="tab-btn" data-tab="requests">Αιτήματα <span id="pending-count" class="badge badge-pending hidden">0</span></button>
+      <button class="tab-btn" data-tab="ratings"><svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Αξιολογήσεις μου</button>
     </div>
 
     <!-- Listings Tab -->
@@ -56,6 +60,14 @@
       <h2 class="mb-2" style="font-size:1.1rem;font-weight:700;">Εισερχόμενα Αιτήματα</h2>
       <div id="requests-alert"></div>
       <div id="requests-table"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Ratings Tab -->
+    <div class="tab-panel" id="tab-ratings">
+      <h2 class="mb-2" style="font-size:1.1rem;font-weight:700;">Αξιολογήσεις που έλαβα</h2>
+      <div id="ratings-alert"></div>
+      <div id="ratings-summary" class="grid grid-3 mb-3"></div>
+      <div id="ratings-table"><div class="spinner"></div></div>
     </div>
   </div>
 
@@ -95,7 +107,7 @@
           <div class="form-group">
             <label class="form-label">Σημείο στον χάρτη <span style="font-weight:400;color:var(--gray-600)">(κάνε κλικ για να ορίσεις)</span></label>
             <div id="pickup-map"></div>
-            <div class="map-hint">🖱️ Κάνε κλικ οπουδήποτε στον χάρτη για να βάλεις το σημείο παραλαβής</div>
+            <div class="map-hint">Κάνε κλικ οπουδήποτε στον χάρτη για να βάλεις το σημείο παραλαβής</div>
             <div class="coords-display" id="coords-display"></div>
             <input type="hidden" id="f-lat">
             <input type="hidden" id="f-lng">
@@ -107,9 +119,20 @@
           <div class="form-group">
             <label class="form-label">Αλλεργιογόνα (επέλεξε αυτά που υπάρχουν)</label>
             <div class="allergen-checkboxes">
-              ${['gluten','crustaceans','eggs','fish','peanuts','soybeans','milk','nuts','celery','mustard','sesame','sulphites','lupin','molluscs'].map(a =>
-                `<label><input type="checkbox" name="allergen" value="${a}"><span>${allergenName(a)}</span></label>`
-              ).join('')}
+              <label><input type="checkbox" name="allergen" value="gluten"><span>Γλουτένη</span></label>
+              <label><input type="checkbox" name="allergen" value="crustaceans"><span>Καρκινοειδή</span></label>
+              <label><input type="checkbox" name="allergen" value="eggs"><span>Αυγά</span></label>
+              <label><input type="checkbox" name="allergen" value="fish"><span>Ψάρι</span></label>
+              <label><input type="checkbox" name="allergen" value="peanuts"><span>Φιστίκια</span></label>
+              <label><input type="checkbox" name="allergen" value="soybeans"><span>Σόγια</span></label>
+              <label><input type="checkbox" name="allergen" value="milk"><span>Γάλα</span></label>
+              <label><input type="checkbox" name="allergen" value="nuts"><span>Ξηροί καρποί</span></label>
+              <label><input type="checkbox" name="allergen" value="celery"><span>Σέλινο</span></label>
+              <label><input type="checkbox" name="allergen" value="mustard"><span>Μουστάρδα</span></label>
+              <label><input type="checkbox" name="allergen" value="sesame"><span>Σουσάμι</span></label>
+              <label><input type="checkbox" name="allergen" value="sulphites"><span>Θειώδη</span></label>
+              <label><input type="checkbox" name="allergen" value="lupin"><span>Λούπινο</span></label>
+              <label><input type="checkbox" name="allergen" value="molluscs"><span>Μαλάκια</span></label>
             </div>
           </div>
         </form>
@@ -133,10 +156,10 @@
       currentUser = await getUser();
       if (!currentUser) { location.href = '/'; return; }
       if (currentUser.role !== 'cook') { redirectByRole(currentUser.role); return; }
-      document.getElementById('nav-credits').textContent = '⭐ ' + currentUser.credits + ' πόντοι';
+      setNavCredits(currentUser.credits);
       document.getElementById('welcome-msg').textContent = 'Γεια σου, ' + currentUser.username + '!';
       loadNotifications();
-      await Promise.all([loadMyListings(), loadRequests()]);
+      await Promise.all([loadMyListings(), loadRequests(), loadRatings()]);
     })();
 
     document.getElementById('logout-btn').addEventListener('click', async (e) => {
@@ -154,6 +177,11 @@
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
       });
     });
+
+    // Credits in nav
+    function setNavCredits(val) {
+      document.getElementById('nav-credits').innerHTML = ICO.star + '&nbsp;' + val + ' πόντοι';
+    }
 
     // Modal
     const modal = document.getElementById('listing-modal');
@@ -210,7 +238,7 @@
       pickupMarker = L.marker([lat, lng], {
         icon: L.divIcon({
           className: '',
-          html: '<div style="background:#2d7a4f;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3);">📍</div>',
+          html: '<div style="background:#2d7a4f;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>',
           iconSize: [32, 32], iconAnchor: [16, 16]
         })
       }).addTo(pickupMap).bindPopup('Σημείο παραλαβής').openPopup();
@@ -220,7 +248,7 @@
 
       const display = document.getElementById('coords-display');
       display.style.display = 'block';
-      display.textContent = `✅ Επιλεγμένο σημείο: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      display.innerHTML = `${ICO.pin} Επιλεγμένο σημείο: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 
       if (panTo) pickupMap.setView([lat, lng], 17);
     }
@@ -266,7 +294,7 @@
       try {
         const listings = await API.get('/api/listings/my');
         if (listings.length === 0) {
-          container.innerHTML = '<div class="empty-state"><div class="emoji">🍳</div><p>Δεν έχεις αγγελίες ακόμα</p></div>';
+          container.innerHTML = `<div class="empty-state">${ICO.forkXl}<p>Δεν έχεις αγγελίες ακόμα</p></div>`;
           return;
         }
         container.innerHTML = `
@@ -285,8 +313,8 @@
                     <td><span class="badge badge-${l.status}">${statusLabel(l.status)}</span></td>
                     <td>
                       <div class="actions-cell">
-                        <button class="btn btn-secondary btn-sm" onclick='editListing(${JSON.stringify(l)})'>✏️</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteListing(${l.id})">🗑️</button>
+                        <button class="btn btn-secondary btn-sm" onclick='editListing(${JSON.stringify(l)})'>${ICO.edit}</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteListing(${l.id})">${ICO.trash}</button>
                       </div>
                     </td>
                   </tr>`).join('')}
@@ -318,7 +346,7 @@
         const badge = document.getElementById('pending-count');
         if (pending > 0) { badge.textContent = pending; badge.classList.remove('hidden'); }
         if (requests.length === 0) {
-          container.innerHTML = '<div class="empty-state"><div class="emoji">📭</div><p>Δεν υπάρχουν αιτήματα ακόμα</p></div>';
+          container.innerHTML = `<div class="empty-state">${ICO.inboxXl}<p>Δεν υπάρχουν αιτήματα ακόμα</p></div>`;
           return;
         }
         container.innerHTML = `
@@ -341,12 +369,12 @@
       let actions = '';
       if (r.status === 'pending') {
         actions = `
-          <button class="btn btn-primary btn-sm" onclick="reqAction(${r.id},'approve')">✅ Αποδοχή</button>
-          <button class="btn btn-danger btn-sm" onclick="reqAction(${r.id},'reject')">❌ Απόρριψη</button>`;
+          <button class="btn btn-primary btn-sm" onclick="reqAction(${r.id},'approve')">${ICO.check} Αποδοχή</button>
+          <button class="btn btn-danger btn-sm" onclick="reqAction(${r.id},'reject')">${ICO.xmark} Απόρριψη</button>`;
       } else if (r.status === 'approved') {
         actions = `
-          <button class="btn btn-primary btn-sm" onclick="reqAction(${r.id},'picked-up')">📦 Παρελήφθη</button>
-          <button class="btn btn-secondary btn-sm" onclick="reqAction(${r.id},'no-show')">🚫 No-show</button>`;
+          <button class="btn btn-primary btn-sm" onclick="reqAction(${r.id},'picked-up')">${ICO.box} Παρελήφθη</button>
+          <button class="btn btn-secondary btn-sm" onclick="reqAction(${r.id},'no-show')">${ICO.ban} No-show</button>`;
       }
       return `
         <tr id="req-row-${r.id}" class="request-row">
@@ -369,7 +397,56 @@
 
     async function refreshCredits() {
       currentUser = await getUser();
-      document.getElementById('nav-credits').textContent = '⭐ ' + currentUser.credits + ' πόντοι';
+      setNavCredits(currentUser.credits);
+    }
+
+    async function loadRatings() {
+      const summary = document.getElementById('ratings-summary');
+      const table = document.getElementById('ratings-table');
+      try {
+        const data = await API.get('/api/ratings/cook-history');
+        const { ratings, total_credits_from_meals, avg_score, total_ratings } = data;
+
+        summary.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-number">${total_ratings}</div>
+            <div class="stat-label">Συνολικές αξιολογήσεις</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${avg_score !== null ? avg_score : '—'}</div>
+            <div class="stat-label">Μέση βαθμολογία</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${total_credits_from_meals}</div>
+            <div class="stat-label">Πόντοι από γεύματα</div>
+          </div>`;
+
+        if (ratings.length === 0) {
+          table.innerHTML = `<div class="empty-state">${ICO.starXl}<p>Δεν έχεις αξιολογήσεις ακόμα</p></div>`;
+          return;
+        }
+
+        table.innerHTML = `
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Αγγελία</th><th>Φοιτητής</th><th>Βαθμολογία</th><th>Πόντοι</th><th>Ημ/νία</th>
+              </tr></thead>
+              <tbody>
+                ${ratings.map(r => `
+                  <tr>
+                    <td><strong>${r.listing_title}</strong></td>
+                    <td>${r.consumer_name}</td>
+                    <td>${'★'.repeat(r.score)}${'☆'.repeat(5 - r.score)} (${r.score}/5)</td>
+                    <td>+${r.credits_earned} πόντ.</td>
+                    <td>${formatDate(r.created_at)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch (err) {
+        showAlert(document.getElementById('ratings-alert'), err.message);
+      }
     }
 
     function allergenName(key) {

@@ -17,14 +17,21 @@
   </style>
 </head>
 <body>
-  <nav class="navbar">
-    <div class="navbar-brand"><span>🍽️</span> UniBite</div>
-    <ul class="navbar-nav">
-      <li><a href="/feed.html">← Πίσω</a></li>
-      <li><span class="navbar-credits" id="nav-credits">⭐ —</span></li>
-      <li><a href="#" id="logout-btn">Έξοδος</a></li>
-    </ul>
-  </nav>
+  <div class="site-header">
+    <div class="container">
+      <div class="site-header-topbar" style="padding-bottom:1rem;">
+        <div class="site-header-brand">
+          <svg class="ico ico-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="50" cy="42" r="30"/><ellipse cx="38" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><ellipse cx="62" cy="31" rx="4" ry="5" fill="currentColor" stroke="none"/><path d="M34 49 Q50 63 66 49"/><line x1="6" y1="25" x2="6" y2="46"/><line x1="13" y1="22" x2="13" y2="46"/><line x1="20" y1="25" x2="20" y2="46"/><line x1="6" y1="46" x2="20" y2="46"/><line x1="13" y1="46" x2="11" y2="88"/><ellipse cx="87" cy="38" rx="8" ry="13"/><line x1="87" y1="51" x2="89" y2="88"/></svg>
+          UniBite
+        </div>
+        <ul class="site-header-nav">
+          <li><a href="/feed.html">← Πίσω</a></li>
+          <li><span class="site-header-credits" id="nav-credits">—</span></li>
+          <li><a href="#" id="logout-btn">Έξοδος</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
   <div class="listing-detail">
     <div id="alert-box"></div>
@@ -48,7 +55,7 @@
     (async () => {
       currentUser = await getUser();
       if (!currentUser) { location.href = '/'; return; }
-      document.getElementById('nav-credits').textContent = '⭐ ' + currentUser.credits + ' πόντοι';
+      document.getElementById('nav-credits').innerHTML = ICO.star + '&nbsp;' + currentUser.credits + ' πόντοι';
       loadNotifications();
 
       if (!listingId) { location.href = '/feed.html'; return; }
@@ -72,7 +79,7 @@
 
       const img = l.photo_url
         ? `<img src="${l.photo_url}" alt="${l.title}" class="listing-hero">`
-        : `<div class="listing-hero-placeholder">🍲</div>`;
+        : `<div class="listing-hero-placeholder"><svg style="width:60px;height:60px;opacity:.25;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg></div>`;
 
       document.getElementById('content').innerHTML = `
         ${img}
@@ -81,22 +88,22 @@
           <span class="badge badge-${l.status}">${statusLabel(l.status)}</span>
         </div>
         <div class="info-row">
-          <span class="portions">🍽️ ${l.available_portions}/${l.total_portions} μερίδες</span>
-          ${avg ? `<span class="badge" style="background:#fff8e1;color:#e65100;">⭐ ${avg} (${ratingData.total} αξιολογήσεις)</span>` : ''}
+          <span class="portions">${ICO.fork} ${l.available_portions}/${l.total_portions} μερίδες</span>
+          ${avg ? `<span class="badge" style="background:#fff8e1;color:#e65100;">${ICO.star} ${avg} (${ratingData.total} αξιολογήσεις)</span>` : ''}
         </div>
 
         <div class="card mb-2">
           <div class="card-body">
-            <p class="fw-600 mb-1">👨‍🍳 Μάγειρας: ${l.cook_name}</p>
+            <p class="fw-600 mb-1">${ICO.user} Μάγειρας: ${l.cook_name}</p>
             ${l.description ? `<p class="text-muted">${l.description}</p>` : ''}
           </div>
         </div>
 
         <div class="card mb-2">
           <div class="card-body">
-            <p class="fw-600 mb-1">📍 Σημείο Παραλαβής</p>
+            <p class="fw-600 mb-1">${ICO.pin} Σημείο Παραλαβής</p>
             <p>${l.pickup_location}</p>
-            <p class="mt-1"><strong>🕐 Ώρες:</strong> ${l.pickup_time}</p>
+            <p class="mt-1"><strong>${ICO.clock} Ώρες:</strong> ${l.pickup_time}</p>
             ${l.pickup_lat && l.pickup_lng ? '<div id="mini-map"></div>' : ''}
           </div>
         </div>
@@ -104,7 +111,7 @@
         ${allergens.length ? `
         <div class="card mb-2">
           <div class="card-body">
-            <p class="fw-600 mb-1">⚠️ Αλλεργιογόνα</p>
+            <p class="fw-600 mb-1">${ICO.warning} Αλλεργιογόνα</p>
             <div>${allergens.map(a => `<span class="badge badge-allergen">${allergenName(a)}</span>`).join(' ')}</div>
           </div>
         </div>` : ''}
@@ -135,7 +142,7 @@
           area.innerHTML = `
             <div id="req-alert"></div>
             <button class="btn btn-primary" id="request-btn" style="width:100%">
-              🍽️ Ζητώ Μερίδα (κοστίζει 1 πόντο)
+              ${ICO.fork} Ζητώ Μερίδα (κοστίζει 1 πόντο)
             </button>`;
           document.getElementById('request-btn').addEventListener('click', sendRequest);
         } else {
@@ -148,7 +155,14 @@
           </div>`;
 
         if (myReq.status === 'picked_up') {
-          renderRatingForm(myReq, ratingArea);
+          if (myReq.rating_id) {
+            ratingArea.innerHTML = `
+              <div class="alert alert-success">
+                ${ICO.check} Έχεις ήδη αξιολογήσει: ${'★'.repeat(myReq.rating_score)}${'☆'.repeat(5 - myReq.rating_score)} (${myReq.rating_score}/5)
+              </div>`;
+          } else {
+            renderRatingForm(myReq, ratingArea);
+          }
         }
       }
     }
@@ -161,7 +175,7 @@
         showAlert(document.getElementById('req-alert'), 'Το αίτημά σου στάλθηκε! Περίμενε έγκριση.', 'success');
         btn.remove();
         currentUser = await getUser();
-        document.getElementById('nav-credits').textContent = '⭐ ' + currentUser.credits + ' πόντοι';
+        document.getElementById('nav-credits').innerHTML = ICO.star + '&nbsp;' + currentUser.credits + ' πόντοι';
       } catch (err) {
         showAlert(document.getElementById('req-alert'), err.message);
         btn.disabled = false;
@@ -172,7 +186,7 @@
       container.innerHTML = `
         <div class="card">
           <div class="card-body">
-            <p class="fw-600 mb-1">⭐ Αξιολόγησε το γεύμα</p>
+            <p class="fw-600 mb-1">${ICO.star} Αξιολόγησε το γεύμα</p>
             <div class="stars rating-stars" id="stars">
               ${[1,2,3,4,5].map(i => `<span class="star" data-score="${i}">★</span>`).join('')}
             </div>
