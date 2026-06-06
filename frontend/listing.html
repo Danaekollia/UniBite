@@ -158,7 +158,7 @@
           if (myReq.rating_id) {
             ratingArea.innerHTML = `
               <div class="alert alert-success">
-                ${ICO.check} Έχεις ήδη αξιολογήσει: ${'★'.repeat(myReq.rating_score)}${'☆'.repeat(5 - myReq.rating_score)} (${myReq.rating_score}/5)
+                Έχεις ήδη αξιολογήσει: ${'★'.repeat(myReq.rating_score)}${'☆'.repeat(5 - myReq.rating_score)} (${myReq.rating_score}/5)
               </div>`;
           } else {
             renderRatingForm(myReq, ratingArea);

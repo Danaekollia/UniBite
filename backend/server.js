@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
+const pool  = require('./config/db');
 
 const app = express();
 
@@ -42,7 +43,6 @@ app.get('/api/test-db', async (req, res) => {
 });
 
 // Current user info
-const pool = require('./config/db');
 app.get('/api/users/me', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Μη συνδεδεμένος' });
   try {
@@ -88,7 +88,9 @@ async function checkUnratedPickups() {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`UniBite server running on http://localhost:${PORT}`);
-  // Τρέχει κάθε ώρα
-  setInterval(checkUnratedPickups, 60 * 60 * 1000);
-  checkUnratedPickups();
+  // Τρέχει κάθε ώρα — μικρή καθυστέρηση ώστε η σύνδεση ΒΔ να είναι έτοιμη
+  setTimeout(() => {
+    checkUnratedPickups();
+    setInterval(checkUnratedPickups, 60 * 60 * 1000);
+  }, 3000);
 });

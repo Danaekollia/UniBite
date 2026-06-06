@@ -369,12 +369,12 @@
       let actions = '';
       if (r.status === 'pending') {
         actions = `
-          <button class="btn btn-primary btn-sm" onclick="reqAction(${r.id},'approve')">${ICO.check} Αποδοχή</button>
-          <button class="btn btn-danger btn-sm" onclick="reqAction(${r.id},'reject')">${ICO.xmark} Απόρριψη</button>`;
+          <button class="btn btn-secondary btn-sm" onclick="reqAction(${r.id},'approve')">Αποδοχή</button>
+          <button class="btn btn-secondary btn-sm" onclick="reqAction(${r.id},'reject')">Απόρριψη</button>`;
       } else if (r.status === 'approved') {
         actions = `
-          <button class="btn btn-primary btn-sm" onclick="reqAction(${r.id},'picked-up')">${ICO.box} Παρελήφθη</button>
-          <button class="btn btn-secondary btn-sm" onclick="reqAction(${r.id},'no-show')">${ICO.ban} No-show</button>`;
+          <button class="btn btn-secondary btn-sm" onclick="reqAction(${r.id},'picked-up')">Παρελήφθη</button>
+          <button class="btn btn-secondary btn-sm" onclick="reqAction(${r.id},'no-show')">No-show</button>`;
       }
       return `
         <tr id="req-row-${r.id}" class="request-row">

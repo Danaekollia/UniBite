@@ -19,14 +19,13 @@
     .entry-score { font-weight: 700; color: var(--green); font-size: 1.1rem; }
 
     /* clickable stat cards */
-    .stat-card { cursor: pointer; transition: transform .15s, box-shadow .15s; }
-    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+    .stat-card { cursor: pointer; }
     .stat-card:hover .stat-label { color: var(--primary); }
 
     /* modal */
     .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
     .modal-backdrop.open { display: flex; }
-    .modal { background: #fff; border-radius: var(--radius); box-shadow: 0 16px 48px rgba(0,0,0,.22); width: 100%; max-width: 760px; max-height: 82vh; display: flex; flex-direction: column; }
+    .modal { background: #fff; border: 1px solid var(--gray-200); width: 100%; max-width: 760px; max-height: 82vh; display: flex; flex-direction: column; }
     .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--gray-100); }
     .modal-title { font-weight: 700; font-size: 1.05rem; }
     .modal-close { background: none; border: none; cursor: pointer; color: var(--gray-600); font-size: 1.4rem; line-height: 1; padding: .2rem .5rem; border-radius: 4px; }
